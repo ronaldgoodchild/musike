@@ -61,6 +61,7 @@ Musike started from the idea behind the old Discord music bots: a server that fe
 - **Search a list:** type several songs separated by commas ("Bohemian Rhapsody, Hotel California, …"). Musike finds each one, picks the best match (you can swap it) and lets you play, favorite or send them all to a playlist
 - Queue with play next, shuffle and repeat (queue or track)
 - **Autoplay radio:** when the queue ends, it keeps going with similar songs
+- **My music:** add folders on your computer (desktop app, web or Docker) and play the music you already own, with cover art from the tags or a `cover.jpg` next to the files. Browse by songs, albums or artists, and mix your files into the same playlists and favorites as YouTube songs. Files are only ever read, never changed
 - Instant seeking (HTTP Range streaming) and the next track preloaded
 
 **Video**

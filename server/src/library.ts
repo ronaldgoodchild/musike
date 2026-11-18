@@ -1,5 +1,5 @@
 import { msg } from "./i18n.js";
-import { HttpError, VIDEO_ID, type Library, type Playlist, type Track } from "./types.js";
+import { HttpError, isTrackId, LOCAL_ID, type Library, type Playlist, type Track } from "./types.js";
 
 // No Node-only imports here: the Android app runs this same module, with its own storage.
 
@@ -42,10 +42,13 @@ const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max
 
 export function sanitizeTrack(input: unknown): Track {
   const t = (input ?? {}) as Record<string, unknown>;
-  const id = str(t.id, 11);
-  if (!VIDEO_ID.test(id)) throw new HttpError(400, msg("invalidTrack"));
+  const id = str(t.id, 20);
+  if (!isTrackId(id)) throw new HttpError(400, msg("invalidTrack"));
+  const local = LOCAL_ID.test(id);
+  // Local covers are served by this same Musike (a relative address); everything else must be https.
   const url = (v: unknown) => {
     const s = str(v, 500);
+    if (local) return s === `/api/local/art/${id}` ? s : "";
     return /^https:\/\//.test(s) ? s : "";
   };
   return {
@@ -56,7 +59,8 @@ export function sanitizeTrack(input: unknown): Track {
     duration: typeof t.duration === "number" && Number.isFinite(t.duration) ? Math.max(0, Math.round(t.duration)) : 0,
     thumb: url(t.thumb),
     art: url(t.art),
-    kind: t.kind === "video" ? "video" : "song",
+    kind: local ? "song" : t.kind === "video" ? "video" : "song",
+    ...(local ? { source: "local" as const } : {}),
   };
 }
 

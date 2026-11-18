@@ -4,6 +4,8 @@ interface DesktopBridge {
   setTheme: (theme: "dark" | "light") => void;
   /** Missing in desktop builds older than 1.2. */
   setLanguage?: (lang: string) => void;
+  /** Native folder picker (desktop app only): the chosen folder, or null when cancelled. */
+  pickFolder?: () => Promise<string | null>;
 }
 
 export const desktop = (window as Window & { musikeDesktop?: DesktopBridge }).musikeDesktop;

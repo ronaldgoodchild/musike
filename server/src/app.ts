@@ -11,12 +11,20 @@ import { proxyStream, serveFile } from "./stream.js";
 import { langOf, msg, tr } from "./i18n.js";
 import { presentJob, startJob, systemInfo, type Channel } from "./system.js";
 import { refreshTools, type Tools } from "./tools.js";
-import { HttpError, VIDEO_ID } from "./types.js";
+import { HttpError, isTrackId, VIDEO_ID } from "./types.js";
+import * as local from "./local.js";
 import { downloadHd, pruneCache, resolveStreams } from "./ytdlp.js";
 
 function videoId(params: unknown): string {
   const id = (params as { id?: string }).id ?? "";
   if (!VIDEO_ID.test(id)) throw new HttpError(400, msg("invalidVideoId"));
+  return id;
+}
+
+/** A YouTube video id or one of the user's own files. */
+function trackId(params: unknown): string {
+  const id = (params as { id?: string }).id ?? "";
+  if (!isTrackId(id)) throw new HttpError(400, msg("invalidVideoId"));
   return id;
 }
 
@@ -128,11 +136,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   /** Resolves stream URLs ahead of time so the next track starts instantly. */
   app.post("/api/prepare/:id", async (req) => {
+    const wanted = trackId(req.params);
+    if (local.isLocalId(wanted)) return { id: wanted, title: "", duration: 0, hasSdVideo: false };
     const r = await resolveStreams(videoId(req.params));
     return { id: r.id, title: r.title, duration: r.duration, hasSdVideo: !!r.video };
   });
 
-  app.get("/api/stream/:id/audio", (req, reply) => proxyStream(req, reply, videoId(req.params), "audio"));
+  app.get("/api/stream/:id/audio", (req, reply) => {
+    const id = trackId(req.params);
+    return local.isLocalId(id) ? local.serveAudio(req, reply, id) : proxyStream(req, reply, id, "audio");
+  });
 
   app.get("/api/stream/:id/video", async (req, reply) => {
     const id = videoId(req.params);
@@ -142,6 +155,18 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (!resolved.video) return serveFile(req, reply, await downloadHd(id), "video/mp4");
     return proxyStream(req, reply, id, "video");
   });
+
+  // Your own music: folders scanned for audio files
+
+  app.get("/api/local", () => local.status());
+  app.get("/api/local/tracks", () => local.tracks());
+  app.get("/api/local/defaults", async () => ({ folders: await local.defaultFolders() }));
+  app.put("/api/local/folders", async (req) => local.setFolders((req.body as { folders?: unknown } | null)?.folders));
+  app.post("/api/local/scan", async () => {
+    void local.startScan();
+    return local.status();
+  });
+  app.get("/api/local/art/:id", (req, reply) => local.serveArt(reply, trackId(req.params)));
 
   // Library
 
@@ -160,7 +185,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   app.put("/api/favorites/:id", async (req) => {
     const track = library.sanitizeTrack(req.body);
-    if (track.id !== videoId(req.params)) throw new HttpError(400, msg("idMismatch"));
+    if (track.id !== trackId(req.params)) throw new HttpError(400, msg("idMismatch"));
     return { favorites: await library.addFavorite(track) };
   });
 
@@ -171,7 +196,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return { favorites: await library.addFavorites(tracks.slice(0, 500).map(library.sanitizeTrack)) };
   });
 
-  app.delete("/api/favorites/:id", async (req) => ({ favorites: await library.removeFavorite(videoId(req.params)) }));
+  app.delete("/api/favorites/:id", async (req) => ({ favorites: await library.removeFavorite(trackId(req.params)) }));
 
   app.post("/api/history", async (req) => ({ history: await library.pushHistory(library.sanitizeTrack(req.body)) }));
 
@@ -200,7 +225,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   });
 
   app.delete("/api/playlists/:pid/tracks/:id", async (req) =>
-    library.removeFromPlaylist((req.params as { pid: string }).pid, videoId(req.params)),
+    library.removeFromPlaylist((req.params as { pid: string }).pid, trackId(req.params)),
   );
 
   // Web app (production build)

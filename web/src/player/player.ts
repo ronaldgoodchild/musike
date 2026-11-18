@@ -112,6 +112,7 @@ const clipFor = new Map<string, string | null>();
 const clipLookups = new Map<string, Promise<string | null>>();
 
 function lookupClip(track: Track): Promise<string | null> {
+  if (track.source === "local") return Promise.resolve(null); // your own files have no YouTube clip
   if (track.kind === "video") return Promise.resolve(track.id);
   if (clipFor.has(track.id)) return Promise.resolve(clipFor.get(track.id)!);
   let lookup = clipLookups.get(track.id);
@@ -133,7 +134,7 @@ function lookupClip(track: Track): Promise<string | null> {
 }
 
 const needsClipLookup = (track: Track, preferVideo: boolean) =>
-  preferVideo && track.kind === "song" && !clipFor.has(track.id);
+  preferVideo && track.kind === "song" && track.source !== "local" && !clipFor.has(track.id);
 
 export const usePlayer = create<PlayerState>((set, get) => {
   const kindFor = (track: Track): Kind =>
@@ -142,7 +143,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
   const mediaIdFor = (track: Track, kind: Kind) =>
     kind === "video" && track.kind !== "video" ? clipFor.get(track.id)! : track.id;
   const noteFor = (track: Track) =>
-    get().preferVideo && track.kind === "song" && clipFor.get(track.id) === null ? ("noClip" as const) : null;
+    get().preferVideo && track.kind === "song" && track.source !== "local" && clipFor.get(track.id) === null ? ("noClip" as const) : null;
   const activeMedia = (): HTMLMediaElement | null => (loaded ? mediaFor(loaded.kind) : null);
 
   function play(media: HTMLMediaElement) {

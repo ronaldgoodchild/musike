@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, ipcMain, Menu, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen, shell } from "electron";
 import type { RunningServer } from "../../server/src/app.js";
 import { backupLibraryOnUpdate } from "./backup.js";
 
@@ -198,6 +198,14 @@ ipcMain.on("musike:lang", (_event, next: unknown) => {
   } catch {
     /* not critical: the splash falls back to English */
   }
+});
+
+// "Add folder" in My music: the system's own folder dialog, so you never have to type a path.
+ipcMain.handle("musike:pick-folder", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const options = { properties: ["openDirectory" as const], defaultPath: app.getPath("music") };
+  const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+  return result.canceled ? null : result.filePaths[0] ?? null;
 });
 
 ipcMain.on("musike:retry", (event) => {

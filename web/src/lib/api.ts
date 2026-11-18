@@ -99,7 +99,7 @@ export async function saveFile(name: string, text: string) {
 export const systemMedia: SystemMedia | null = null;
 
 /** What this build can do. The Android build has no video yet, no yt-dlp to manage, and retries expired streams. */
-export const capabilities = { video: true, engineSettings: true, retryOnError: false };
+export const capabilities = { video: true, engineSettings: true, retryOnError: false, local: true };
 
 /** Media elements hide the HTTP error body; fetch it to show the real reason. */
 export async function explainStreamError(url: string): Promise<{ message: string; code?: ErrorCode }> {

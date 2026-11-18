@@ -7,6 +7,8 @@ export interface Track {
   thumb: string;
   art: string;
   kind: "song" | "video";
+  /** "local" for a file from the user's own folders; absent for YouTube. */
+  source?: "local";
 }
 
 export interface Playlist {

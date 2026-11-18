@@ -2,6 +2,7 @@ import {
   BooksIcon,
   ClockCounterClockwiseIcon,
   GearSixIcon,
+  HardDrivesIcon,
   HeartIcon,
   HouseIcon,
   MagnifyingGlassIcon,
@@ -10,6 +11,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router";
 import { useT } from "../i18n";
+import { capabilities } from "../lib/api";
 import { cn } from "../lib/format";
 import { paths } from "../lib/routes";
 import { useAppearance } from "../stores/appearance";
@@ -24,6 +26,7 @@ const nav = [
   { to: paths.home, key: "home", Icon: HouseIcon, end: true },
   { to: paths.search, key: "search", Icon: MagnifyingGlassIcon, end: false },
   { to: paths.library, key: "library", Icon: BooksIcon, end: false },
+  ...(capabilities.local ? [{ to: paths.local, key: "local", Icon: HardDrivesIcon, end: false } as const] : []),
 ] as const;
 
 /** Settings entry. Shows a dot (and on the wide rail, an "Update" pill) when yt-dlp needs attention. */
